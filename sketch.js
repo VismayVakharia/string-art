@@ -1,16 +1,19 @@
 const canvas_weight = 800;
 const canvas_height = 800;
+const EPSILON = 1e-6;
 
-const num_balls = 60;
+const num_balls = 200;
 const radius = 350;
 const ball_size = 15;
 const balls = [];
 const common_freq = 2;
 
-const string_gap = 4;
+const string_gap = 20;
+let periodic = false;
 
 const time_factor = 2000;
 let time;
+let paused = false;
 
 class Ball {
   constructor(angle, freq, phase, color) {
@@ -18,21 +21,21 @@ class Ball {
     this.freq = freq;
     this.phase = phase;
     this.color = color;
+
     this.size = ball_size;
+    this.x = this.y = 0;
   }
 
-  get_position(t) {
+  update(t) {
     let value = sin(this.phase + this.freq * t);
-    let x = radius * cos(this.angle) * value;
-    let y = radius * sin(this.angle) * value;
-    return { x, y };
+    this.x = radius * cos(this.angle) * value;
+    this.y = radius * sin(this.angle) * value;
   }
 
-  draw(t) {
-    const pos = this.get_position(t);
+  draw() {
     fill(this.color);
     noStroke();
-    circle(pos.x, pos.y, this.size);
+    circle(this.x, this.y, this.size);
   }
 }
 
@@ -54,6 +57,40 @@ function draw_guidelines() {
   circle(0, 0, 2 * radius);
 }
 
+function draw_strings() {
+  // TODO: try with beginShape / endShape
+  // TODO: color each loop of string differently
+  stroke("green");
+  strokeWeight(2);
+  for (let i = 0; i < num_balls; i++) {
+    const cur = balls[i];
+    if (!periodic && i + string_gap >= num_balls) continue;
+    const next = balls[(i + string_gap) % num_balls];
+    line(cur.x, cur.y, next.x, next.y);
+  }
+}
+
+function draw_balls() {
+  for (let ball of balls) {
+    ball.draw();
+  }
+}
+
+function freq_fn(i, n) {
+  // return common_freq + (i - n / 2) / (1 * n);
+  return common_freq;
+}
+
+function phase_fn(i, n) {
+  // return ((i - num_balls / 2) * 2 * PI) / (2 * num_balls);
+  return sin(PI * cos((3 * PI * i) / n));
+  // return cos((2 * PI * i) / n);
+}
+
+function isclose(a, b) {
+  return abs(a - b) < EPSILON;
+}
+
 function setup() {
   createCanvas(canvas_weight, canvas_height);
   time = 0;
@@ -64,27 +101,38 @@ function setup() {
 
   for (let i = 0; i < num_balls; i++) {
     let angle = (i * 2 * PI) / num_balls;
-    let freq = common_freq + (i - num_balls / 2) / (1 * num_balls);
-    // let freq = common_freq;
-    let phase = ((i - num_balls / 2) * 2 * PI) / (1.5 * num_balls);
-    let color = lerpColor(start_color, end_color, i / num_balls);
+    let freq = freq_fn(i, num_balls);
+    let phase = phase_fn(i, num_balls);
+    let color = lerpColor(start_color, end_color, abs((2 * i) / num_balls - 1));
     balls.push(new Ball(angle, freq, phase, color));
   }
 
-  // highlight "middle" ball
-  balls[floor(num_balls / 2)].color = "red";
+  // check periodicity
+  const first = balls[0];
+  const last_freq = freq_fn(num_balls, num_balls);
+  const last_phase = phase_fn(num_balls, num_balls);
+  if (isclose(first.freq, last_freq) && isclose(first.phase, last_phase)) {
+    periodic = true;
+  }
+}
+
+function mousePressed() {
+  paused = !paused;
 }
 
 function draw() {
   // background(50);
   background("rgba(50, 50, 50, 1)");
-  time += deltaTime / time_factor;
-
-  translate(canvas_weight / 2, canvas_height / 2);
-
-  draw_guidelines();
+  if (!paused) {
+    time += deltaTime / time_factor;
+  }
 
   for (let ball of balls) {
-    ball.draw(time);
+    ball.update(time);
   }
+
+  translate(canvas_weight / 2, canvas_height / 2);
+  draw_guidelines();
+  draw_strings();
+  draw_balls();
 }
