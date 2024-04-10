@@ -1,4 +1,4 @@
-const canvas_weight = 800;
+const canvas_width = 800;
 const canvas_height = 800;
 const EPSILON = 1e-6;
 
@@ -92,7 +92,7 @@ function isclose(a, b) {
 }
 
 function setup() {
-  createCanvas(canvas_weight, canvas_height);
+  createCanvas(canvas_width, canvas_height);
   time = 0;
 
   // populate balls
@@ -131,7 +131,7 @@ function draw() {
     ball.update(time);
   }
 
-  translate(canvas_weight / 2, canvas_height / 2);
+  translate(canvas_width / 2, canvas_height / 2);
   draw_guidelines();
   draw_strings();
   draw_balls();
